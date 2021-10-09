@@ -24,23 +24,42 @@ LinearSolver(xf) = begin
 end
 
 apply!(solver::LinearSolver, bc::PeriodicBC, boundary::Symbol) = begin
-    A, n = solver.A, solver.nx
-    if boundary == :left  A[1, n] = -1.0 end
-    if boundary == :right A[n, 1] = -1.0 end
+    A, b = solver.A, solver.b
+    n, h = solver.nx, solver.δx
+    m = n - 1
+
+    if boundary == :left
+        A[1, :].= 0.
+        A[1, 1] = 2.
+        A[1, 2] =-1.
+        A[1, n] =-1.
+        b[1]    = 0.
+    end
+
+    if boundary == :right
+        A[n, :].= 0.
+        A[n, n] = 2.
+        A[n, m] =-1.
+        A[n, 1] =-1.
+        b[n]    = 0.
+    end
 end
 
 apply!(solver::LinearSolver, bc::DirichletBC, boundary::Symbol) = begin
     A, b = solver.A, solver.b
     n, h = solver.nx, solver.δx
-    m = n -1
+    m = n - 1
     
     if boundary == :left
-        A[1, 1] = 4.0
+        A[1, :].= 0.
+        A[1, 1] = 4.
         A[1, 2] =-4/3
         b[1]    = 8/3 * bc.value
     end
+
     if boundary == :right
-        A[n, n] = 4.0
+        A[n, :].= 0.
+        A[n, n] = 4.
         A[n, m] =-4/3
         b[n]    = 8/3 * bc.value
     end
