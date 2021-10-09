@@ -1,4 +1,4 @@
-struct LinearSolver
+struct LinearSolver{T <: Tuple}
     nx :: Int64
     Δx :: Vector{Float64}
     δx :: Vector{Float64}
@@ -7,10 +7,11 @@ struct LinearSolver
     b :: Vector{Float64}
     u :: Vector{Float64}
     
-    bcs :: Dict{Symbol, BoundaryCondition}
+    bcs :: T
+    bnds :: Tuple{Symbol, Symbol}
 end
 
-LinearSolver(xf) = begin
+function LinearSolver(xf; left=DirichletBC(), right=DirichletBC())
     Δx = diff(xf)
     nx = length(Δx)
     xc = cumsum(Δx) .- 0.5Δx
@@ -20,10 +21,14 @@ LinearSolver(xf) = begin
                 -1 => -ones(nx-1),
                 +1 => -ones(nx-1))
     b  = zeros(nx)
-    return LinearSolver(nx, Δx, δx, A, b, similar(xc), Dict())
+    ls = LinearSolver(nx, Δx, δx, A, b, similar(xc), (left, right), (:left, :right))
+    for (bnd, bc) in zip(ls.bnds, ls.bcs)
+        apply!(ls, bc, bnd)
+    end
+    return ls 
 end
 
-apply!(solver::LinearSolver, bc::PeriodicBC, boundary::Symbol) = begin
+function apply!(solver::LinearSolver, bc::PeriodicBC, boundary::Symbol)
     A, b = solver.A, solver.b
     n, h = solver.nx, solver.δx
     m = n - 1
@@ -45,7 +50,7 @@ apply!(solver::LinearSolver, bc::PeriodicBC, boundary::Symbol) = begin
     end
 end
 
-apply!(solver::LinearSolver, bc::DirichletBC, boundary::Symbol) = begin
+function apply!(solver::LinearSolver, bc::DirichletBC, boundary::Symbol)
     A, b = solver.A, solver.b
     n, h = solver.nx, solver.δx
     m = n - 1
