@@ -37,12 +37,12 @@ apply!(solver::LinearSolver, bc::DirichletBC, boundary::Symbol) = begin
     if boundary == :left
         A[1, 1] = 4.0
         A[1, 2] =-4/3
-        b[1]   += 8/3 * bc.value
+        b[1]    = 8/3 * bc.value
     end
     if boundary == :right
         A[n, n] = 4.0
         A[n, m] =-4/3
-        b[n]   += 8/3 * bc.value
+        b[n]    = 8/3 * bc.value
     end
     
 end
