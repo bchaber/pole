@@ -1,7 +1,7 @@
-struct LinearSolver{T <: Tuple}
-    nx :: Int64
-    Δx :: Vector{Float64}
-    δx :: Vector{Float64}
+struct LinearSolver{D, T <: Tuple}
+    n :: NTuple{D,Int64}
+    Δ :: Matrix{Float64}
+    δ :: Matrix{Float64}
     
     A :: SparseMatrixCSC{Float64, Int64}
     b :: Vector{Float64}
@@ -21,7 +21,7 @@ function LinearSolver(xf; left=DirichletBC(), right=DirichletBC())
                 -1 => -ones(nx-1),
                 +1 => -ones(nx-1))
     b  = zeros(nx)
-    ls = LinearSolver(nx, Δx, δx, A, b, similar(xc), (left, right), (:left, :right))
+    ls = LinearSolver((nx,), reshape(Δx,:,1), reshape(δx,:,1), A, b, similar(xc), (left, right), (:left, :right))
     for (bnd, bc) in zip(ls.bnds, ls.bcs)
         apply!(ls, bc, bnd)
     end
@@ -30,8 +30,9 @@ end
 
 function apply!(solver::LinearSolver, bc::PeriodicBC, boundary::Symbol)
     A, b = solver.A, solver.b
-    n, h = solver.nx, solver.δx
-    m = n - 1
+    n, = solver.n
+    h, = solver.δ
+    m  = n - 1
 
     if boundary == :left
         A[1, :].= 0.
@@ -52,9 +53,10 @@ end
 
 function apply!(solver::LinearSolver, bc::DirichletBC, boundary::Symbol)
     A, b = solver.A, solver.b
-    n, h = solver.nx, solver.δx
-    m = n - 1
-    
+    n, = solver.n
+    h, = solver.δ
+    m  = n - 1
+
     if boundary == :left
         A[1, :].= 0.
         A[1, 1] = 4.
@@ -68,5 +70,4 @@ function apply!(solver::LinearSolver, bc::DirichletBC, boundary::Symbol)
         A[n, m] =-4/3
         b[n]    = 8/3 * bc.value
     end
-    
 end
