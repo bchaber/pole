@@ -1,3 +1,5 @@
+import IterativeSolvers: cg!
+
 struct LinearSolver{D, T <: Tuple}
     n :: NTuple{D,Int64}
     Δ :: Matrix{Float64}
@@ -70,4 +72,11 @@ function apply!(solver::LinearSolver, bc::DirichletBC, boundary::Symbol)
         A[n, m] =-4/3
         b[n]    = 8/3 * bc.value
     end
+end
+
+function solve!(ps::LinearSolver, ρ)
+    rhs = -ρ .* h .^ 2 # extra allocation
+    ps.u .= 0.0
+    cg!(ps.u, ps.A, ps.b .+ rhs)
+    return nothing
 end
