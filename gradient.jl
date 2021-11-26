@@ -17,3 +17,15 @@ calculate_gradient!(dudx, u, δx, n, boundary, bc::DirichletBC) = begin
 end
 
 calculate_gradient!(dudx, u, δx, n) = @inbounds dudx[2:n] .= @views (u[2:n] .- u[1:n-1]) ./ δx[2:n]
+
+function (∇::GradientOperator)(u; result=nothing, reverse=false)
+    dudx = isnothing(result) ? zeros(∇.nx + 1) : result
+    
+    calculate_gradient!(dudx, u, ∇.δx, ∇.nx)
+    for (bnd, bc) in zip(∇.bnds, ∇.bcs)
+        calculate_gradient!(dudx, u, ∇.δx, ∇.nx, bnd, bc)
+    end
+    
+    if reverse dudx .*= -1.0 end
+    return dudx
+end
