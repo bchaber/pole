@@ -75,7 +75,7 @@ function apply!(solver::LinearSolver, bc::DirichletBC, boundary::Symbol)
 end
 
 function solve!(ps::LinearSolver, ρ)
-    rhs = -ρ .* h .^ 2 # extra allocation
+    rhs = -ρ .* ps.Δ .^ 2 # extra allocation
     ps.u .= 0.0
     cg!(ps.u, ps.A, ps.b .+ rhs)
     return nothing
