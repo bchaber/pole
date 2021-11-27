@@ -17,8 +17,8 @@ InPlacePeriodicSolver(xf; tol=1e-15, maxiter=100) = begin
     return InPlacePeriodicSolver(nx, Δx, δx, similar(xc), tol, maxiter)
 end
 
-function solve!(ps::InPlacePeriodicSolver, b)
-    rhs = -ρ .* h .^ 2 # extra allocation
+function solve!(ps::InPlacePeriodicSolver, ρ)
+    rhs = -ρ .* ps.Δx .^ 2 # extra allocation
     ps.u .= 0.0
     jacobi!(ps.u, rhs; K=ps.maxiter, ϵ=ps.tol)
     return nothing
