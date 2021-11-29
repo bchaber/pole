@@ -28,3 +28,5 @@ function solve!(ps::InPlacePeriodicSolver, ρ)
     jacobi!(ps.u, ps.rhs; K=ps.maxiter, ϵ=ps.tol, xi=ps.xi, xj=ps.xj)
     return nothing
 end
+
+apply!(::InPlacePeriodicSolver, ::PeriodicBC, ::Symbol) = nothing
