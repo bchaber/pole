@@ -75,8 +75,9 @@ function apply!(solver::LinearSolver, bc::DirichletBC, boundary::Symbol)
 end
 
 function solve!(ps::LinearSolver, ρ)
-    rhs = -ρ .* ps.Δ .^ 2 # extra allocation
-    ps.u .= 0.0
-    cg!(ps.u, ps.A, ps.b .+ rhs)
+    @inbounds for i in eachindex(ρ)
+      ρ[i] = ps.b[i] - ρ[i] * ps.Δ[i]^2
+    end
+    ps.u .= (ps.A \ ρ)
     return nothing
 end

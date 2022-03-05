@@ -23,7 +23,9 @@ InPlacePeriodicSolver(xf; tol=1e-15, maxiter=100) = begin
 end
 
 function solve!(ps::InPlacePeriodicSolver, ρ)
-    ps.rhs .= -ρ .* ps.Δx .^ 2 # extra allocation
+    @inbounds for i in eachindex(ρ)
+        ps.rhs[i] = -ρ[i] * ps.Δx[i]^2
+    end
     ps.u .= 0.0
     jacobi!(ps.u, ps.rhs; K=ps.maxiter, ϵ=ps.tol, xi=ps.xi, xj=ps.xj)
     return nothing
