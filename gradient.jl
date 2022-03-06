@@ -22,6 +22,11 @@ end
 @inline grady(u, δy, j, bnd::Type{Val{:Upper}}, bc::DirichletBC) = (first(u) - bc.value) / first(δy)
 @inline grady(u, δy, j, bnd::Type{Val{:Lower}}, bc::DirichletBC) = (bc.value -  last(u)) / last(δy)
 
+@inline gradx(u, δx, i, bnd::Type{Val{:Left}},  bc::NeumannBC) = bc.value
+@inline gradx(u, δx, i, bnd::Type{Val{:Right}}, bc::NeumannBC) = bc.value
+@inline grady(u, δy, j, bnd::Type{Val{:Upper}}, bc::NeumannBC) = bc.value
+@inline grady(u, δy, j, bnd::Type{Val{:Lower}}, bc::NeumannBC) = bc.value
+
 @inline gradx(u, δx, i, j) = (u[i,j] - u[i-1,j]) / δx[i]
 @inline grady(u, δy, i, j) = (u[i,j] - u[i,j-1]) / δy[j]
 
@@ -98,8 +103,8 @@ function (∇::GradientOperator2)(u; result=nothing)
 
     @inbounds for i=nx+1, j=2:ny
         ux = @SVector [u[1,1], u[nx,1]]
-        dx = gradx(ux, ∇.δx, i, Val{:Right}, right)
-        dy = grady(u, ∇.δy, i, j)
+        dx = gradx(ux, ∇.δx, nx, Val{:Right}, right)
+        dy = grady(u, ∇.δy, nx, j)
         ∇u[i,j] = @SVector [dx, dy, dz]
     end
 
@@ -110,8 +115,8 @@ function (∇::GradientOperator2)(u; result=nothing)
     end
 
     @inbounds for i=2:nx, j=ny+1
-        dx = gradx(u, ∇.δx, i, j)
-        dy = grady(u, ∇.δy, j, Val{:Lower}, lower)
+        dx = gradx(u, ∇.δx, i, ny)
+        dy = grady(u, ∇.δy, ny, Val{:Lower}, lower)
         ∇u[i,j] = @SVector [dx, dy, dz]
     end
     # interior
