@@ -16,14 +16,14 @@ end
 
 function LinearSolver(xf, yf; left=DirichletBC(), right=DirichletBC(), upper=DirichletBC(), lower=DirichletBC())
     Δx = diff(xf)
-    Δy = diff(xf)
+    Δy = diff(yf)
     nx = length(Δx)
     ny = length(Δy)
     xc = cumsum(Δx) .- 0.5Δx
     yc = cumsum(Δy) .- 0.5Δy
     δx = diff([first(xf); xc; last(xf)])
     δy = diff([first(yf); yc; last(yf)])
-    
+    @assert nx == ny "Right now only square domains are supported :("
     N  = nx * ny
     M  = nx
     A  = spzeros(N, N)
@@ -115,6 +115,11 @@ function LinearSolver(xf; left=DirichletBC(), right=DirichletBC())
     end
 
     return LinearSolver((nx,), hcat(Δx), hcat(δx), A, b, similar(b), similar(b), dof, (left, right))
+end
+
+@inline function reset!(A::SparseMatrixCSC{Float64, Int64}, b::Vector{Float64}, o)
+    @assert b[o] == 0. "You are going to reset a degree of freedom that has b[dof] != 0"
+    A[o, :] .= 0.
 end
 
 @inline function apply!(A::SparseMatrixCSC{Float64, Int64}, bc::NeumannBC, o, n, m)
