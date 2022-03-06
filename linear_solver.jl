@@ -26,44 +26,53 @@ function LinearSolver(xf, yf; left=DirichletBC(), right=DirichletBC(), upper=Dir
     
     N  = nx * ny
     M  = nx
-    A  = spdiagm(0 => 4ones(N),
-                -1 => -ones(N-1),
-                +1 => -ones(N-1),
-                -M => -ones(N-M),
-                +M => -ones(N-M))
+    A  = spzeros(N, N)
     b  = zeros(N)
     dof = collect(reshape(1:N, nx, ny))
 
-    @inbounds for i = 1, j = 1:ny
-        n = dof[i,  j]
+    @inbounds for i = 2:nx-1, j = 2:ny-1
+        n = dof[i-1,j]
         m = dof[i+1,j]
-        k = dof[nx, j]
-        apply!(A, left, n, m, k)
-        apply!(b, left, n)
+        o = dof[i,j]
+        k = dof[i,j-1]
+        l = dof[i,j+1]
+        A[o, o] = 4.
+        A[o, n] =-1.
+        A[o, m] =-1.
+        A[o, k] =-1.
+        A[o, l] =-1.
+    end
+
+    @inbounds for i = 1, j = 1:ny
+        n = dof[i+1,j]
+        m = dof[nx, j]
+        o = dof[i,  j]
+        apply!(A, left, o, n, m)
+        apply!(b, left, o)
     end
 
     @inbounds for i = nx, j = 1:ny
-        n = dof[i,  j]
-        m = dof[i-1,j]
-        k = dof[1,  j]
-        apply!(A, right, n, m, k)
-        apply!(b, right, n)
+        n = dof[i-1,j]
+        m = dof[1,  j]
+        o = dof[i,  j]
+        apply!(A, right, o, n, m)
+        apply!(b, right, o)
     end
 
     @inbounds for i = 1:nx, j = 1
-        n = dof[i,j]
-        m = dof[i,j+1]
-        k = dof[i,ny]
-        apply!(A, upper, n, m, k)
-        apply!(b, upper, n)
+        n = dof[i,j+1]
+        m = dof[i,ny]
+        o = dof[i,j]
+        apply!(A, upper, o, n, m)
+        apply!(b, upper, o)
     end
 
     @inbounds for i = 1:nx, j = ny
-        n = dof[i,j]
-        m = dof[i,j-1]
-        k = dof[i,1]
-        apply!(A, lower, n, m, k)
-        apply!(b, lower, n)
+        n = dof[i,j-1]
+        m = dof[i,1]
+        o = dof[i,j]
+        apply!(A, lower, o, n, m)
+        apply!(b, lower, o)
     end
 
     return LinearSolver((nx,ny), hcat(Δx, Δy), hcat(δx, δy), A, b, similar(b), similar(b), dof, (left, right, upper, lower))
@@ -76,48 +85,68 @@ function LinearSolver(xf; left=DirichletBC(), right=DirichletBC())
     δx = diff([first(xf); xc; last(xf)])
     
     N  = nx
-    A  = spdiagm(0 => 2ones(N),
-                -1 => -ones(N-1),
-                +1 => -ones(N-1))
+    A  = spzeros(N, N)
     b  = zeros(N)
     dof = collect(reshape(1:N, nx, 1))
     
-    @inbounds for i = 1
-        n = dof[i]
+    @inbounds for i = 2:nx-1
+        n = dof[i-1]
         m = dof[i+1]
-        k = dof[nx]
-        apply!(A, left, n, m, k)
-        apply!(b, left, n)
+        o = dof[i]
+        A[o, o] = 2.
+        A[o, n] =-1.
+        A[o, m] =-1.
+    end
+
+    @inbounds for i = 1
+        n = dof[i+1]
+        m = dof[nx]
+        o = dof[i]
+        apply!(A, left, o, n, m)
+        apply!(b, left, o)
     end
 
     @inbounds for i = nx
-        n = dof[i]
-        m = dof[i-1]
-        k = dof[1]
-        apply!(A, right, n, m, k)
-        apply!(b, right, n)
+        n = dof[i-1]
+        m = dof[1]
+        o = dof[i]
+        apply!(A, right, o, n, m)
+        apply!(b, right, o)
     end
 
     return LinearSolver((nx,), hcat(Δx), hcat(δx), A, b, similar(b), similar(b), dof, (left, right))
 end
 
-@inline function apply!(A::SparseMatrixCSC{Float64, Int64}, bc::DirichletBC, n, m, k)
-    A[n, n] += 6/3
-    A[n, m] -= 1/3
+@inline function apply!(A::SparseMatrixCSC{Float64, Int64}, bc::NeumannBC, o, n, m)
+    A[o, o] += 1.
+    A[o, n] -= 1.
     return nothing
 end
 
-@inline function apply!(b::Vector{Float64}, bc::DirichletBC, n)
-    b[n]   += 8/3 * bc.value
+@inline function apply!(b::Vector{Float64}, bc::NeumannBC, o)
+    b[o] -= bc.value
     return nothing
 end
 
-@inline function apply!(A::SparseMatrixCSC{Float64, Int64}, bc::PeriodicBC, n, m, k)
-    A[n, k] -= 1.
+@inline function apply!(A::SparseMatrixCSC{Float64, Int64}, bc::DirichletBC, o, n, m)
+    A[o, o] += 8/3
+    A[o, n] -= 4/3
     return nothing
 end
 
-@inline function apply!(b::Vector{Float64}, bc::PeriodicBC, n)
+@inline function apply!(b::Vector{Float64}, bc::DirichletBC, o)
+    b[o]   += 4/3 * bc.value
+    return nothing
+end
+
+@inline function apply!(A::SparseMatrixCSC{Float64, Int64}, bc::PeriodicBC, o, n, m)
+    A[o, o] += 2.
+    A[o, n] -= 1.
+    A[o, m] -= 1.
+    return nothing
+end
+
+@inline function apply!(b::Vector{Float64}, bc::PeriodicBC, o)
     return nothing
 end
 
