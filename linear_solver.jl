@@ -8,7 +8,8 @@ struct LinearSolver{D, T <: Tuple}
     A :: SparseMatrixCSC{Float64, Int64}
     b :: Vector{Float64}
     u :: Vector{Float64}
-    
+
+    rhs :: Vector{Float64}   
     dof :: Matrix{Int64}
     bcs :: T
 end
@@ -65,7 +66,7 @@ function LinearSolver(xf, yf; left=DirichletBC(), right=DirichletBC(), upper=Dir
         apply!(b, lower, n)
     end
 
-    return LinearSolver((nx,ny), hcat(Δx, Δy), hcat(δx, δy), A, b, similar(b), dof, (left, right, upper, lower))
+    return LinearSolver((nx,ny), hcat(Δx, Δy), hcat(δx, δy), A, b, similar(b), similar(b), dof, (left, right, upper, lower))
 end
 
 function LinearSolver(xf; left=DirichletBC(), right=DirichletBC())
@@ -97,7 +98,7 @@ function LinearSolver(xf; left=DirichletBC(), right=DirichletBC())
         apply!(b, right, n)
     end
 
-    return LinearSolver((nx,), hcat(Δx), hcat(δx), A, b, similar(b), dof, (left, right))
+    return LinearSolver((nx,), hcat(Δx), hcat(δx), A, b, similar(b), similar(b), dof, (left, right))
 end
 
 @inline function apply!(A::SparseMatrixCSC{Float64, Int64}, bc::DirichletBC, n, m, k)
@@ -122,8 +123,8 @@ end
 
 function solve!(ps::LinearSolver{1, T}, ρ) where {T}
     @inbounds for i in eachindex(ρ)
-      ρ[i] = ps.b[i] - ρ[i] * ps.Δ[i]^2 # assume uniform mesh in all directions
+      ps.rhs[i] = ps.b[i] - ρ[i] * ps.Δ[i]^2 # assume uniform mesh in all directions
     end
-    ps.u .= (ps.A \ ρ)
+    ps.u .= (ps.A \ ps.rhs)
     return nothing
 end
