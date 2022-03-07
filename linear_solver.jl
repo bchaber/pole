@@ -175,3 +175,21 @@ function solve!(ps::LinearSolver{D, T}, ρ) where {D, T}
     ps.u .= (ps.A \ ps.rhs)
     return nothing
 end
+
+function cylindrical!(ps::LinearSolver, rc)
+    nz, nr = ps.n
+    h  = ps.h
+    A  = ps.A
+    b  = ps.b
+
+    for i = 1:nz, j = 2:nr-1
+        r = rc[j]
+        if r ≈ 0.0 continue end
+        n = ps.dof[i,j-1]
+        m = ps.dof[i,j+1]
+        o = ps.dof[i,j]
+        A[o, n] += 0.5(h/r)
+        A[o, m] -= 0.5(h/r)
+    end
+    return nothing
+end
