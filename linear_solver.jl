@@ -122,6 +122,13 @@ end
     A[o, :] .= 0.
 end
 
+@inline function fixed!(A::SparseMatrixCSC{Float64, Int64}, b::Vector{Float64}, value, o)
+    reset!(A, b, o)
+    A[o, o] = 1.
+    b[o]    = value
+    return nothing
+end
+
 @inline function apply!(A::SparseMatrixCSC{Float64, Int64}, bc::NeumannBC, o, n, m)
     A[o, o] += 1.
     A[o, n] -= 1.
