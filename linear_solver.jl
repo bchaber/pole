@@ -2,8 +2,10 @@ import IterativeSolvers: cg!
 
 struct LinearSolver{D, T <: Tuple}
     n :: NTuple{D,Int64}
-    Δ :: Matrix{Float64}
-    δ :: Matrix{Float64}
+    Δ :: NTuple{D, Vector{Float64}}
+    δ :: NTuple{D, Vector{Float64}}
+
+    h :: Float64
     
     A :: SparseMatrixCSC{Float64, Int64}
     b :: Vector{Float64}
@@ -23,9 +25,11 @@ function LinearSolver(xf, yf; left=DirichletBC(), right=DirichletBC(), upper=Dir
     yc = cumsum(Δy) .- 0.5Δy
     δx = diff([first(xf); xc; last(xf)])
     δy = diff([first(yf); yc; last(yf)])
-    @assert nx == ny "Right now only square domains are supported :("
+    @assert minimum(Δx) ≈ maximum(Δx) ≈
+            minimum(Δy) ≈ maximum(Δy) "Currently only uniform cells are supported :("
+
+    h  = first(Δx)
     N  = nx * ny
-    M  = nx
     A  = spzeros(N, N)
     b  = zeros(N)
     dof = collect(reshape(1:N, nx, ny))
@@ -74,8 +78,8 @@ function LinearSolver(xf, yf; left=DirichletBC(), right=DirichletBC(), upper=Dir
         apply!(A, lower, o, n, m)
         apply!(b, lower, o)
     end
-
-    return LinearSolver((nx,ny), hcat(Δx, Δy), hcat(δx, δy), A, b, similar(b), similar(b), dof, (left, right, upper, lower))
+    
+    return LinearSolver((nx,ny), (Δx,Δy), (δx,δy), h, A, b, similar(b), similar(b), dof, (left, right, upper, lower))
 end
 
 function LinearSolver(xf; left=DirichletBC(), right=DirichletBC())
@@ -83,7 +87,9 @@ function LinearSolver(xf; left=DirichletBC(), right=DirichletBC())
     nx = length(Δx)
     xc = cumsum(Δx) .- 0.5Δx
     δx = diff([first(xf); xc; last(xf)])
-    
+    @assert minimum(Δx) ≈ maximum(Δx) "Currently only uniform cells are supported :("
+
+    h  = first(Δx)   
     N  = nx
     A  = spzeros(N, N)
     b  = zeros(N)
@@ -114,7 +120,7 @@ function LinearSolver(xf; left=DirichletBC(), right=DirichletBC())
         apply!(b, right, o)
     end
 
-    return LinearSolver((nx,), hcat(Δx), hcat(δx), A, b, similar(b), similar(b), dof, (left, right))
+    return LinearSolver((nx,), (Δx,), (δx,), h, A, b, similar(b), similar(b), dof, (left, right))
 end
 
 @inline function reset!(A::SparseMatrixCSC{Float64, Int64}, b::Vector{Float64}, o)
@@ -162,9 +168,9 @@ end
     return nothing
 end
 
-function solve!(ps::LinearSolver{1, T}, ρ) where {T}
+function solve!(ps::LinearSolver{D, T}, ρ) where {D, T}
     @inbounds for i in eachindex(ρ)
-      ps.rhs[i] = ps.b[i] - ρ[i] * ps.Δ[i]^2 # assume uniform mesh in all directions
+      ps.rhs[i] = ps.b[i] - ρ[i] * ps.h^2 # assume uniform mesh in all directions
     end
     ps.u .= (ps.A \ ps.rhs)
     return nothing
