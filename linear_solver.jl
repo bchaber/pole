@@ -1,5 +1,4 @@
-import IterativeSolvers: cg!
-
+struct Stencil end
 struct LinearSolver{D, T <: Tuple}
     n :: NTuple{D,Int64}
     Δ :: NTuple{D, Vector{Float64}}
@@ -15,158 +14,8 @@ struct LinearSolver{D, T <: Tuple}
     dof :: Matrix{Int64}
     bcs :: T
 end
-
-function LinearSolver(xf, yf; left=DirichletBC(), right=DirichletBC(), upper=DirichletBC(), lower=DirichletBC())
-    Δx = diff(xf)
-    Δy = diff(yf)
-    nx = length(Δx)
-    ny = length(Δy)
-    xc = cumsum(Δx) .- 0.5Δx
-    yc = cumsum(Δy) .- 0.5Δy
-    δx = diff([first(xf); xc; last(xf)])
-    δy = diff([first(yf); yc; last(yf)])
-    @assert minimum(Δx) ≈ maximum(Δx) ≈
-            minimum(Δy) ≈ maximum(Δy) "Currently only uniform cells are supported :("
-
-    h  = first(Δx)
-    N  = nx * ny
-    A  = spzeros(N, N)
-    b  = zeros(N)
-    dof = collect(reshape(1:N, nx, ny))
-
-    @inbounds for i = 2:nx-1, j = 2:ny-1
-        n = dof[i-1,j]
-        m = dof[i+1,j]
-        o = dof[i,j]
-        k = dof[i,j-1]
-        l = dof[i,j+1]
-        A[o, o] = 4.
-        A[o, n] =-1.
-        A[o, m] =-1.
-        A[o, k] =-1.
-        A[o, l] =-1.
-    end
-
-    @inbounds for i = 1, j = 1:ny
-        n = dof[i+1,j]
-        m = dof[nx, j]
-        o = dof[i,  j]
-        apply!(A, left, o, n, m)
-        apply!(b, left, o)
-    end
-
-    @inbounds for i = nx, j = 1:ny
-        n = dof[i-1,j]
-        m = dof[1,  j]
-        o = dof[i,  j]
-        apply!(A, right, o, n, m)
-        apply!(b, right, o)
-    end
-
-    @inbounds for i = 1:nx, j = 1
-        n = dof[i,j+1]
-        m = dof[i,ny]
-        o = dof[i,j]
-        apply!(A, upper, o, n, m)
-        apply!(b, upper, o)
-    end
-
-    @inbounds for i = 1:nx, j = ny
-        n = dof[i,j-1]
-        m = dof[i,1]
-        o = dof[i,j]
-        apply!(A, lower, o, n, m)
-        apply!(b, lower, o)
-    end
-    
-    return LinearSolver((nx,ny), (Δx,Δy), (δx,δy), h, A, b, similar(b), similar(b), dof, (left, right, upper, lower))
-end
-
-function LinearSolver(xf; left=DirichletBC(), right=DirichletBC())
-    Δx = diff(xf)
-    nx = length(Δx)
-    xc = cumsum(Δx) .- 0.5Δx
-    δx = diff([first(xf); xc; last(xf)])
-    @assert minimum(Δx) ≈ maximum(Δx) "Currently only uniform cells are supported :("
-
-    h  = first(Δx)   
-    N  = nx
-    A  = spzeros(N, N)
-    b  = zeros(N)
-    dof = collect(reshape(1:N, nx, 1))
-    
-    @inbounds for i = 2:nx-1
-        n = dof[i-1]
-        m = dof[i+1]
-        o = dof[i]
-        A[o, o] = 2.
-        A[o, n] =-1.
-        A[o, m] =-1.
-    end
-
-    @inbounds for i = 1
-        n = dof[i+1]
-        m = dof[nx]
-        o = dof[i]
-        apply!(A, left, o, n, m)
-        apply!(b, left, o)
-    end
-
-    @inbounds for i = nx
-        n = dof[i-1]
-        m = dof[1]
-        o = dof[i]
-        apply!(A, right, o, n, m)
-        apply!(b, right, o)
-    end
-
-    return LinearSolver((nx,), (Δx,), (δx,), h, A, b, similar(b), similar(b), dof, (left, right))
-end
-
-@inline function reset!(A::SparseMatrixCSC{Float64, Int64}, b::Vector{Float64}, o)
-    @assert b[o] == 0. "You are going to reset a degree of freedom that has b[dof] != 0"
-    A[o, :] .= 0.
-end
-
-@inline function fixed!(A::SparseMatrixCSC{Float64, Int64}, b::Vector{Float64}, value, o)
-    reset!(A, b, o)
-    A[o, o] = 1.
-    b[o]    = value
-    return nothing
-end
-
-@inline function apply!(A::SparseMatrixCSC{Float64, Int64}, bc::NeumannBC, o, n, m)
-    A[o, o] += 1.
-    A[o, n] -= 1.
-    return nothing
-end
-
-@inline function apply!(b::Vector{Float64}, bc::NeumannBC, o)
-    b[o] -= bc.value
-    return nothing
-end
-
-@inline function apply!(A::SparseMatrixCSC{Float64, Int64}, bc::DirichletBC, o, n, m)
-    A[o, o] += 8/3
-    A[o, n] -= 4/3
-    return nothing
-end
-
-@inline function apply!(b::Vector{Float64}, bc::DirichletBC, o)
-    b[o]   += 4/3 * bc.value
-    return nothing
-end
-
-@inline function apply!(A::SparseMatrixCSC{Float64, Int64}, bc::PeriodicBC, o, n, m)
-    A[o, o] += 2.
-    A[o, n] -= 1.
-    A[o, m] -= 1.
-    return nothing
-end
-
-@inline function apply!(b::Vector{Float64}, bc::PeriodicBC, o)
-    return nothing
-end
+const Forward = Val{:+}
+const Reverse = Val{:-}
 
 function solve!(ps::LinearSolver{D, T}, ρ) where {D, T}
     @inbounds for i in eachindex(ρ)
@@ -176,20 +25,66 @@ function solve!(ps::LinearSolver{D, T}, ρ) where {D, T}
     return nothing
 end
 
-function cylindrical!(ps::LinearSolver, rc)
-    nz, nr = ps.n
-    h  = ps.h
-    A  = ps.A
-    b  = ps.b
-
-    for i = 1:nz, j = 2:nr-1
-        r = rc[j]
-        if r ≈ 0.0 continue end
-        n = ps.dof[i,j-1]
-        m = ps.dof[i,j+1]
-        o = ps.dof[i,j]
-        A[o, n] += 0.5(h/r)
-        A[o, m] -= 0.5(h/r)
-    end
+@inline function fixed!(ps::LinearSolver{2, T}, value, i, j) where {T}
+    dof = ps.dof[i,j]
+    @assert ps.b[dof] == 0. "You are going to reset a degree of freedom that has b[i] != 0"
+    ps.A[dof, :]  .= 0.
+    ps.A[dof, dof] = 1.
+    ps.b[dof]      = value
     return nothing
+end
+
+# Cartesian coordinate system
+@inline function cartesian!(A::SparseMatrixCSC{Float64, Int64}, bc::Stencil, dir::Forward, i, j)
+    A[i, i] -= 1.; A[i, j] += 1.
+end
+@inline function cartesian!(A::SparseMatrixCSC{Float64, Int64}, bc::Stencil, dir::Reverse, i, j)
+    A[i, i] += 1.; A[i, j] -= 1.
+end
+@inline function cartesian!(A::SparseMatrixCSC{Float64, Int64}, bc::PeriodicBC, dir::Forward, i, _, k)
+    A[i, i] -= 1.; A[i, k] += 1.
+end
+@inline function cartesian!(A::SparseMatrixCSC{Float64, Int64}, bc::PeriodicBC, dir::Reverse, i, _, k)
+    A[i, j] += 1.; A[i, k] -= 1.
+end
+@inline function cartesian!(b::Vector{Float64}, bc::PeriodicBC, dir::Forward, i) end
+@inline function cartesian!(b::Vector{Float64}, bc::PeriodicBC, dir::Reverse, i) end
+@inline function cartesian!(A::SparseMatrixCSC{Float64, Int64}, bc::NeumannBC, dir::Forward, i, j, _) end
+@inline function cartesian!(A::SparseMatrixCSC{Float64, Int64}, bc::NeumannBC, dir::Reverse, i, j, _) end
+@inline function cartesian!(b::Vector{Float64}, bc::NeumannBC, dir::Forward, i) b[i] -= bc.value end
+@inline function cartesian!(b::Vector{Float64}, bc::NeumannBC, dir::Reverse, i) b[i] += bc.value end
+@inline function cartesian!(A::SparseMatrixCSC{Float64, Int64}, bc::DirichletBC, dir::Forward, i, j, _)
+    A[i, i] -= 3.; A[i, j] += 1/3
+end
+@inline function cartesian!(A::SparseMatrixCSC{Float64, Int64}, bc::DirichletBC, dir::Reverse, i, j, _)
+    A[i, j] += 3.; A[i, j] -= 1/3
+end
+@inline function cartesian!(b::Vector{Float64}, bc::DirichletBC, dir::Forward, i)
+    b[i] -= (8/3)bc.value
+end
+@inline function cartesian!(b::Vector{Float64}, bc::DirichletBC, dir::Reverse, i)
+    b[i] += (8/3)bc.value
+end
+# Cylindrical coordinate coordinate system
+@inline function radial!(A::SparseMatrixCSC{Float64, Int64}, bc::Stencil, dir::Forward, α, i, j)
+    A[i, i] -= α; A[i, j] += α
+end
+@inline function radial!(A::SparseMatrixCSC{Float64, Int64}, bc::Stencil, dir::Reverse, α, i, j)
+    A[i, i] += α; A[i, j] -= α
+end
+@inline function radial!(A::SparseMatrixCSC{Float64, Int64}, bc::NeumannBC, dir::Forward, α, i, j, _) end
+@inline function radial!(A::SparseMatrixCSC{Float64, Int64}, bc::NeumannBC, dir::Reverse, α, i, j, _) end
+@inline function radial!(b::Vector{Float64}, bc::NeumannBC, dir::Forward, α, i) b[i] -= α*bc.value end
+@inline function radial!(b::Vector{Float64}, bc::NeumannBC, dir::Reverse, α, i) b[i] += α*bc.value end
+@inline function radial!(A::SparseMatrixCSC{Float64, Int64}, bc::DirichletBC, dir::Forward, α, i, j, _)
+    A[i, i] -= 3.0α; A[i, j] += α/3.0
+end
+@inline function radial!(A::SparseMatrixCSC{Float64, Int64}, bc::DirichletBC, dir::Reverse, α, i, j, _)
+    A[i, i] += 3.0α; A[i, j] -= α/3.0
+end
+@inline function radial!(b::Vector{Float64}, bc::DirichletBC, dir::Forward, α, i)
+    b[i] -= α*(8/3)bc.value
+end
+@inline function radial!(b::Vector{Float64}, bc::DirichletBC, dir::Reverse, α, i)
+    b[i] += α*(8/3)bc.value
 end
