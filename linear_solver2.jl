@@ -104,6 +104,7 @@ function cylindrical!(ps::LinearSolver{2, T}, rf) where {T}
         radial!(A, stencil, fwd, h/2rf[j+1], o, m)
     end
 
+if first(rf) > 0.0
     @inbounds for i = 1:nz, j = 1
         n = dof[i,nr]
         m = dof[i,j+1]
@@ -112,7 +113,7 @@ function cylindrical!(ps::LinearSolver{2, T}, rf) where {T}
         radial!(b, left,    rev, h/2rf[j], o)
         radial!(A, stencil, fwd, h/2rf[j+1], o, m)
     end
-
+end
     @inbounds for i = 1:nz, j = nr
         n = dof[i,j-1]
         m = dof[i,1]
