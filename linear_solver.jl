@@ -88,3 +88,22 @@ end
 @inline function radial!(b::Vector{Float64}, bc::DirichletBC, dir::Reverse, α, i)
     b[i] -= α*(8/3)bc.value
 end
+# Polar coordinate system
+@inline function polar!(A::SparseMatrixCSC{Float64, Int64}, bc::Stencil, dir::Forward, α, i, j)
+    A[i, i] += α; A[i, j] -= α
+end
+@inline function polar!(A::SparseMatrixCSC{Float64, Int64}, bc::Stencil, dir::Reverse, α, i, j)
+    A[i, i] -= α; A[i, j] += α
+end
+@inline function polar!(A::SparseMatrixCSC{Float64, Int64}, bc::PeriodicBC, dir::Forward, α, i, _, k)
+    A[i, i] += α; A[i, k] -= α
+end
+@inline function polar!(A::SparseMatrixCSC{Float64, Int64}, bc::PeriodicBC, dir::Reverse, α, i, _, k)
+    A[i, i] -= α; A[i, k] += α
+end
+@inline function polar!(b::Vector{Float64}, bc::PeriodicBC, dir::Forward, α, i) end
+@inline function polar!(b::Vector{Float64}, bc::PeriodicBC, dir::Reverse, α, i) end
+@inline function polar!(A::SparseMatrixCSC{Float64, Int64}, bc::NeumannBC, dir::Forward, α, i, j, _) end
+@inline function polar!(A::SparseMatrixCSC{Float64, Int64}, bc::NeumannBC, dir::Reverse, α, i, j, _) end
+@inline function polar!(b::Vector{Float64}, bc::NeumannBC, dir::Forward, α, i) b[i] += α*bc.value end
+@inline function polar!(b::Vector{Float64}, bc::NeumannBC, dir::Reverse, α, i) b[i] -= α*bc.value end
