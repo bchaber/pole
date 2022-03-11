@@ -45,7 +45,7 @@ end
     A[i, i] += 1.; A[i, k] -= 1.
 end
 @inline function cartesian!(A::SparseMatrixCSC{Float64, Int64}, bc::PeriodicBC, dir::Reverse, i, _, k)
-    A[i, j] -= 1.; A[i, k] += 1.
+    A[i, i] -= 1.; A[i, k] += 1.
 end
 @inline function cartesian!(b::Vector{Float64}, bc::PeriodicBC, dir::Forward, i) end
 @inline function cartesian!(b::Vector{Float64}, bc::PeriodicBC, dir::Reverse, i) end
@@ -57,7 +57,7 @@ end
     A[i, i] += 3.; A[i, j] -= 1/3
 end
 @inline function cartesian!(A::SparseMatrixCSC{Float64, Int64}, bc::DirichletBC, dir::Reverse, i, j, _)
-    A[i, j] -= 3.; A[i, j] += 1/3
+    A[i, i] -= 3.; A[i, j] += 1/3
 end
 @inline function cartesian!(b::Vector{Float64}, bc::DirichletBC, dir::Forward, i)
     b[i] += (8/3)bc.value
