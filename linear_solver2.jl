@@ -21,6 +21,71 @@ function LinearSolver(xf, yf; left=DirichletBC(), right=DirichletBC(), upper=Dir
     return ps
 end
 
+function polar!(ps::LinearSolver{2, T}, rc) where {T}
+    left, right, upper, lower = ps.bcs
+    dof = ps.dof
+    nt,nr = ps.n
+    A  = ps.A
+    b  = ps.b
+    Δr = ps.h
+
+    stencil = Stencil()
+    fwd = Val(:+)
+    rev = Val(:-)
+
+    @inbounds for i = 2:nt-1, j = 1:nr
+        n = dof[i-1,j]
+        m = dof[i+1,j]
+        o = dof[i,  j]
+        polar!(A, stencil, fwd, 1.0/rc[j], o, n)
+        polar!(A, stencil, fwd, 1.0/rc[j], o, m)
+    end
+
+    @inbounds for i = 1, j = 1:nr
+        n = dof[nt, j]
+        m = dof[i+1,j]
+        o = dof[i,  j]
+        polar!(A, left,    fwd, 1.0/rc[j], o, m, n)
+        polar!(b, left,    fwd, 1.0/rc[j], o)
+        polar!(A, stencil, fwd, 1.0/rc[j], o, m)
+    end
+
+    @inbounds for i = nt, j = 1:nr
+        n = dof[i-1,j]
+        m = dof[1,  j]
+        o = dof[i,  j]
+        polar!(A, stencil, fwd, 1.0/rc[j], o, n)
+        polar!(A, right,   fwd, 1.0/rc[j], o, n, m)
+        polar!(b, right,   fwd, 1.0/rc[j], o)
+    end
+
+    @inbounds for i = 1:nt, j = 2:nr-1
+        n = dof[i,j-1]
+        m = dof[i,j+1]
+        o = dof[i,j]
+        cartesian!(A, stencil, fwd, o, n)
+        cartesian!(A, stencil, fwd, o, m)
+    end
+
+    @inbounds for i = 1:nt, j = 1
+        n = dof[i, nr]
+        m = dof[i,j+1]
+        o = dof[i,j]
+        cartesian!(A, lower,   fwd, o, m, n)
+        cartesian!(b, lower,   fwd, o)
+        cartesian!(A, stencil, fwd, o, m)
+    end
+
+    @inbounds for i = 1:nt, j = nr
+        n = dof[i,j-1]
+        m = dof[i,1]
+        o = dof[i,j]
+        cartesian!(A, stencil, fwd, o, n)
+        cartesian!(A, upper,   fwd, o, n, m)
+        cartesian!(b, upper,   fwd, o)
+    end
+end
+
 function cartesian!(ps::LinearSolver{2, T}) where {T}
     left, right, upper, lower = ps.bcs
     dof = ps.dof
