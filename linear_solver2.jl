@@ -85,10 +85,11 @@ function cartesian!(ps::LinearSolver{2, T}) where {T}
     end
 end
 
-function cylindrical!(ps::LinearSolver{2, T}, rf) where {T}
+function cylindrical!(ps::LinearSolver{2, T}, rc) where {T}
     left, right, upper, lower = ps.bcs
     dof = ps.dof
     nz,nr = ps.n
+    Δr = ps.h
     A  = ps.A
     b  = ps.b
 
@@ -100,27 +101,27 @@ function cylindrical!(ps::LinearSolver{2, T}, rf) where {T}
         n = dof[i,j-1]
         m = dof[i,j+1]
         o = dof[i,j]
-        radial!(A, stencil, rev, h/2rf[j],   o, n)
-        radial!(A, stencil, fwd, h/2rf[j+1], o, m)
+        radial!(A, stencil, rev, Δr/2rc[j],   o, n)
+        radial!(A, stencil, fwd, Δr/2rc[j], o, m)
     end
 
-if first(rf) > 0.0
+if first(rc) > Δr/2
     @inbounds for i = 1:nz, j = 1
         n = dof[i,nr]
         m = dof[i,j+1]
         o = dof[i,j]
-        radial!(A, left,    rev, h/2rf[j], o, m, n)
-        radial!(b, left,    rev, h/2rf[j], o)
-        radial!(A, stencil, fwd, h/2rf[j+1], o, m)
+        radial!(A, left,    rev, Δr/2rc[j], o, m, n)
+        radial!(b, left,    rev, Δr/2rc[j], o)
+        radial!(A, stencil, fwd, Δr/2rc[j], o, m)
     end
 end
     @inbounds for i = 1:nz, j = nr
         n = dof[i,j-1]
         m = dof[i,1]
         o = dof[i,j]
-        radial!(A, stencil, rev, h/2rf[j], o, n)
-        radial!(A, right,   fwd, h/2rf[j+1], o, n, m)
-        radial!(b, right,   fwd, h/2rf[j+1], o)
+        radial!(A, stencil, rev, Δr/2rc[j], o, n)
+        radial!(A, right,   fwd, Δr/2rc[j], o, n, m)
+        radial!(b, right,   fwd, Δr/2rc[j], o)
     end
     return nothing
 end
