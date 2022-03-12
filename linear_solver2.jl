@@ -200,8 +200,8 @@ if first(rc) > Δr/2
         n = dof[i,nr]
         m = dof[i,j+1]
         o = dof[i,j]
-        radial!(A, left,    rev, Δr/2rc[j], o, m, n)
-        radial!(b, left,    rev, Δr/2rc[j], o)
+        radial!(A, lower,   rev, Δr/2rc[j], o, m, n)
+        radial!(b, lower,   rev, Δr/2rc[j], o)
         radial!(A, stencil, fwd, Δr/2rc[j], o, m)
     end
 end
@@ -210,8 +210,8 @@ end
         m = dof[i,1]
         o = dof[i,j]
         radial!(A, stencil, rev, Δr/2rc[j], o, n)
-        radial!(A, right,   fwd, Δr/2rc[j], o, n, m)
-        radial!(b, right,   fwd, Δr/2rc[j], o)
+        radial!(A, upper,   fwd, Δr/2rc[j], o, n, m)
+        radial!(b, upper,   fwd, Δr/2rc[j], o)
     end
     return nothing
 end
