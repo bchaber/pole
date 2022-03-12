@@ -1,4 +1,4 @@
-function LinearSolver(xf, yf; left=DirichletBC(), right=DirichletBC(), upper=DirichletBC(), lower=DirichletBC())
+function init(xf, yf, left, right, upper, lower)
     Δx = diff(xf)
     Δy = diff(yf)
     nx = length(Δx)
@@ -15,9 +15,34 @@ function LinearSolver(xf, yf; left=DirichletBC(), right=DirichletBC(), upper=Dir
     A  = spzeros(N, N)
     b  = zeros(N)
     dof = collect(reshape(1:N, nx, ny))
-    ps = LinearSolver((nx,ny), (Δx,Δy), (δx,δy), h, A, b, similar(b), similar(b), dof, (left, right, upper, lower))
+    return LinearSolver((nx,ny), (Δx,Δy), (δx,δy), h, A, b, similar(b), similar(b), dof, (left, right, upper, lower))
+end
 
+function LinearSolver(xf, yf; left=DirichletBC(), right=DirichletBC(), upper=DirichletBC(), lower=DirichletBC())
+    ps = init(xf, yf, left, right, upper, lower)
     cartesian!(ps)
+    return ps
+end
+
+function LinearSolver(cs::Val{:xy}, xf, yf; left=DirichletBC(), right=DirichletBC(), upper=DirichletBC(), lower=DirichletBC())
+    ps = init(xf, yf, left, right, upper, lower)
+    cartesian!(ps)
+    return ps
+end
+
+function LinearSolver(cs::Val{:zr}, zf, rf; left=DirichletBC(), right=DirichletBC(), upper=NeumannBC(), lower=NeumannBC())
+    rc = [0.5rf[i] + 0.5rf[i-1] for i=2:length(rf)]
+    ps = init(zf, rf, left, right, upper, lower)
+    cartesian!(ps)
+    radial!(ps, rc)
+    return ps
+end
+
+function LinearSolver(cs::Val{:θr}, xf, yf; left=PeriodicBC(), right=PeriodicBC(), upper=DirichletBC(), lower=DirichletBC())
+    rc = [0.5rf[i] + 0.5rf[i-1] for i=2:length(rf)]
+    ps = init(xf, yf, left, right, upper, lower)
+    polar!(ps, rc)
+    radial!(ps, rc)
     return ps
 end
 
@@ -150,7 +175,7 @@ function cartesian!(ps::LinearSolver{2, T}) where {T}
     end
 end
 
-function cylindrical!(ps::LinearSolver{2, T}, rc) where {T}
+function radial!(ps::LinearSolver{2, T}, rc) where {T}
     left, right, upper, lower = ps.bcs
     dof = ps.dof
     nz,nr = ps.n
