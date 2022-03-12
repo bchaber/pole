@@ -1,4 +1,4 @@
-function LinearSolver(xf; left=DirichletBC(), right=DirichletBC())
+function init(xf, left, right)
     Δx = diff(xf)
     nx = length(Δx)
     xc = cumsum(Δx) .- 0.5Δx
@@ -11,9 +11,26 @@ function LinearSolver(xf; left=DirichletBC(), right=DirichletBC())
     b  = zeros(N)
     dof = collect(reshape(1:N, nx, 1))
 
-    ps = LinearSolver((nx,), (Δx,), (δx,), h, A, b, similar(b), similar(b), dof, (left, right))
+    return LinearSolver((nx,), (Δx,), (δx,), h, A, b, similar(b), similar(b), dof, (left, right))
+end
 
+function LinearSolver(xf; left=DirichletBC(), right=DirichletBC())
+    ps = init(xf, left, right)
     cartesian!(ps)
+    return ps
+end
+
+function LinearSolver(cs::Val{:x}, xf; left=DirichletBC(), right=DirichletBC())
+    ps = init(xf, left, right)
+    cartesian!(ps)
+    return ps
+end
+
+function LinearSolver(cs::Val{:r}, rf; left=DirichletBC(), right=DirichletBC())
+    rc = [0.5rf[i] + 0.5rf[i-1] for i=2:length(rf)]
+    ps = init(rf, left, right)
+    cartesian!(ps)
+    radial!(ps, rc)
     return ps
 end
 
