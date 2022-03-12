@@ -62,26 +62,26 @@ function polar!(ps::LinearSolver{2, T}, rc) where {T}
         n = dof[i-1,j]
         m = dof[i+1,j]
         o = dof[i,  j]
-        polar!(A, stencil, fwd, 1.0/rc[j], o, n)
-        polar!(A, stencil, fwd, 1.0/rc[j], o, m)
+        polar!(A, stencil, fwd, 1.0/rc[j]^2, o, n)
+        polar!(A, stencil, fwd, 1.0/rc[j]^2, o, m)
     end
 
     @inbounds for i = 1, j = 1:nr
         n = dof[nt, j]
         m = dof[i+1,j]
         o = dof[i,  j]
-        polar!(A, left,    fwd, 1.0/rc[j], o, m, n)
-        polar!(b, left,    fwd, 1.0/rc[j], o)
-        polar!(A, stencil, fwd, 1.0/rc[j], o, m)
+        polar!(A, left,    fwd, 1.0/rc[j]^2, o, m, n)
+        polar!(b, left,    fwd, 1.0/rc[j]^2, o)
+        polar!(A, stencil, fwd, 1.0/rc[j]^2, o, m)
     end
 
     @inbounds for i = nt, j = 1:nr
         n = dof[i-1,j]
         m = dof[1,  j]
         o = dof[i,  j]
-        polar!(A, stencil, fwd, 1.0/rc[j], o, n)
-        polar!(A, right,   fwd, 1.0/rc[j], o, n, m)
-        polar!(b, right,   fwd, 1.0/rc[j], o)
+        polar!(A, stencil, fwd, 1.0/rc[j]^2, o, n)
+        polar!(A, right,   fwd, 1.0/rc[j]^2, o, n, m)
+        polar!(b, right,   fwd, 1.0/rc[j]^2, o)
     end
 
     @inbounds for i = 1:nt, j = 2:nr-1
