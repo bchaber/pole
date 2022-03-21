@@ -40,6 +40,7 @@ function cartesian!(ps::LinearSolver{1, T}) where {T}
     nx, = ps.n
     A  = ps.A
     b  = ps.b
+    α  = 1.0
 
     stencil = Stencil()
     fwd = Val(:+)
@@ -49,26 +50,26 @@ function cartesian!(ps::LinearSolver{1, T}) where {T}
         n = dof[i-1]
         m = dof[i+1]
         o = dof[i]
-        cartesian!(A, stencil, fwd, o, n)
-        cartesian!(A, stencil, fwd, o, m)
+        cartesian!(A, stencil, fwd, α, o, n)
+        cartesian!(A, stencil, fwd, α, o, m)
     end
 
     @inbounds for i = 1
         n = dof[nx]
         m = dof[i+1]
         o = dof[i]
-        cartesian!(A, left,    fwd, o, m, n)
-        cartesian!(b, left,    fwd, o)
-        cartesian!(A, stencil, fwd, o, m)
+        cartesian!(A, left,    fwd, α, o, m, n)
+        cartesian!(b, left,    fwd, α, o)
+        cartesian!(A, stencil, fwd, α, o, m)
     end
 
     @inbounds for i = nx
         n = dof[i-1]
         m = dof[1]
         o = dof[i]
-        cartesian!(A, stencil, fwd, o, n)
-        cartesian!(A, right,   fwd, o, n, m)
-        cartesian!(b, right,   fwd, o)
+        cartesian!(A, stencil, fwd, α, o, n)
+        cartesian!(A, right,   fwd, α, o, n, m)
+        cartesian!(b, right,   fwd, α, o)
     end
 end
 
@@ -76,7 +77,7 @@ function cylindrical!(ps::LinearSolver{1, T}, rf) where {T}
     left, right = ps.bcs
     dof = ps.dof
     nr, = ps.n
-    h  = ps.h
+    Δr, = ps.Δ
     A  = ps.A
     b  = ps.b
 
@@ -85,29 +86,32 @@ function cylindrical!(ps::LinearSolver{1, T}, rf) where {T}
     rev = Val(:-)
 
     @inbounds for i = 2:nr-1
+        α = 0.5rc[i]
         n = dof[i-1]
         m = dof[i+1]
         o = dof[i]
-        radial!(A, stencil, rev, h/2rf[i],   o, n)
-        radial!(A, stencil, fwd, h/2rf[i+1], o, m)
+        radial!(A, stencil, rev, α, o, n)
+        radial!(A, stencil, fwd, α, o, m)
     end
-
+if first(rc) > Δr/2
     @inbounds for i = 1
+        α = 0.5rc[i]
         n = dof[nr]
         m = dof[i+1]
         o = dof[i]
-        radial!(A, left,    rev, h/2rf[i], o, m, n)
-        radial!(b, left,    rev, h/2rf[i], o)
-        radial!(A, stencil, fwd, h/2rf[i+1], o, m)
+        radial!(A, left,    rev, α, o, m, n)
+        radial!(b, left,    rev, α, o)
+        radial!(A, stencil, fwd, α, o, m)
     end
-
+end
     @inbounds for i = nr
+        α = 0.5rc[i]
         n = dof[i-1]
         m = dof[1]
         o = dof[i]
-        radial!(A, stencil, rev, h/2rf[i], o, n)
-        radial!(A, right,   fwd, h/2rf[i+1], o, n, m)
-        radial!(b, right,   fwd, h/2rf[i+1], o)
+        radial!(A, stencil, rev, α, o, n)
+        radial!(A, right,   fwd, α, o, n, m)
+        radial!(b, right,   fwd, α, o)
     end
     return nothing
 end

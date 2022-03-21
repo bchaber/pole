@@ -35,35 +35,35 @@ end
 end
 
 # Cartesian coordinate system
-@inline function cartesian!(A::SparseMatrixCSC{Float64, Int64}, bc::Stencil, dir::Forward, i, j)
-    A[i, i] += 1.; A[i, j] -= 1.
+@inline function cartesian!(A::SparseMatrixCSC{Float64, Int64}, bc::Stencil, dir::Forward, α, i, j)
+    A[i, i] += α; A[i, j] -= α
 end
-@inline function cartesian!(A::SparseMatrixCSC{Float64, Int64}, bc::Stencil, dir::Reverse, i, j)
-    A[i, i] -= 1.; A[i, j] += 1.
+@inline function cartesian!(A::SparseMatrixCSC{Float64, Int64}, bc::Stencil, dir::Reverse, α, i, j)
+    A[i, i] -= α; A[i, j] += α
 end
-@inline function cartesian!(A::SparseMatrixCSC{Float64, Int64}, bc::PeriodicBC, dir::Forward, i, _, k)
-    A[i, i] += 1.; A[i, k] -= 1.
+@inline function cartesian!(A::SparseMatrixCSC{Float64, Int64}, bc::PeriodicBC, dir::Forward, α, i, _, k)
+    A[i, i] += α; A[i, k] -= α
 end
-@inline function cartesian!(A::SparseMatrixCSC{Float64, Int64}, bc::PeriodicBC, dir::Reverse, i, _, k)
-    A[i, i] -= 1.; A[i, k] += 1.
+@inline function cartesian!(A::SparseMatrixCSC{Float64, Int64}, bc::PeriodicBC, dir::Reverse, α, i, _, k)
+    A[i, i] -= α; A[i, k] += α
 end
-@inline function cartesian!(b::Vector{Float64}, bc::PeriodicBC, dir::Forward, i) end
-@inline function cartesian!(b::Vector{Float64}, bc::PeriodicBC, dir::Reverse, i) end
-@inline function cartesian!(A::SparseMatrixCSC{Float64, Int64}, bc::NeumannBC, dir::Forward, i, j, _) end
-@inline function cartesian!(A::SparseMatrixCSC{Float64, Int64}, bc::NeumannBC, dir::Reverse, i, j, _) end
-@inline function cartesian!(b::Vector{Float64}, bc::NeumannBC, dir::Forward, i) b[i] += bc.value end
-@inline function cartesian!(b::Vector{Float64}, bc::NeumannBC, dir::Reverse, i) b[i] -= bc.value end
-@inline function cartesian!(A::SparseMatrixCSC{Float64, Int64}, bc::DirichletBC, dir::Forward, i, j, _)
-    A[i, i] += 3.; A[i, j] -= 1/3
+@inline function cartesian!(b::Vector{Float64}, bc::PeriodicBC, dir::Forward, α, i) end
+@inline function cartesian!(b::Vector{Float64}, bc::PeriodicBC, dir::Reverse, α, i) end
+@inline function cartesian!(A::SparseMatrixCSC{Float64, Int64}, bc::NeumannBC, dir::Forward, α, i, j, _) end
+@inline function cartesian!(A::SparseMatrixCSC{Float64, Int64}, bc::NeumannBC, dir::Reverse, α, i, j, _) end
+@inline function cartesian!(b::Vector{Float64}, bc::NeumannBC, dir::Forward, α, i) b[i] += α * bc.value end
+@inline function cartesian!(b::Vector{Float64}, bc::NeumannBC, dir::Reverse, α, i) b[i] -= α * bc.value end
+@inline function cartesian!(A::SparseMatrixCSC{Float64, Int64}, bc::DirichletBC, dir::Forward, α, i, j, _)
+    A[i, i] += 3.0α; A[i, j] -= α/3.0
 end
-@inline function cartesian!(A::SparseMatrixCSC{Float64, Int64}, bc::DirichletBC, dir::Reverse, i, j, _)
-    A[i, i] -= 3.; A[i, j] += 1/3
+@inline function cartesian!(A::SparseMatrixCSC{Float64, Int64}, bc::DirichletBC, dir::Reverse, α, i, j, _)
+    A[i, i] -= 3.0α; A[i, j] += α/3.0
 end
-@inline function cartesian!(b::Vector{Float64}, bc::DirichletBC, dir::Forward, i)
-    b[i] += (8/3)bc.value
+@inline function cartesian!(b::Vector{Float64}, bc::DirichletBC, dir::Forward, α, i)
+    b[i] += (8/3)α * bc.value
 end
-@inline function cartesian!(b::Vector{Float64}, bc::DirichletBC, dir::Reverse, i)
-    b[i] -= (8/3)bc.value
+@inline function cartesian!(b::Vector{Float64}, bc::DirichletBC, dir::Reverse, α, i)
+    b[i] -= (8/3)α * bc.value
 end
 # Cylindrical coordinate coordinate system
 @inline function radial!(A::SparseMatrixCSC{Float64, Int64}, bc::Stencil, dir::Forward, α, i, j)
@@ -105,5 +105,5 @@ end
 @inline function polar!(b::Vector{Float64}, bc::PeriodicBC, dir::Reverse, α, i) end
 @inline function polar!(A::SparseMatrixCSC{Float64, Int64}, bc::NeumannBC, dir::Forward, α, i, j, _) end
 @inline function polar!(A::SparseMatrixCSC{Float64, Int64}, bc::NeumannBC, dir::Reverse, α, i, j, _) end
-@inline function polar!(b::Vector{Float64}, bc::NeumannBC, dir::Forward, α, i) b[i] += α*bc.value end
-@inline function polar!(b::Vector{Float64}, bc::NeumannBC, dir::Reverse, α, i) b[i] -= α*bc.value end
+@inline function polar!(b::Vector{Float64}, bc::NeumannBC, dir::Forward, α, i) b[i] += α * bc.value end
+@inline function polar!(b::Vector{Float64}, bc::NeumannBC, dir::Reverse, α, i) b[i] -= α * bc.value end

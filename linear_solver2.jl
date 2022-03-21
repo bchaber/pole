@@ -7,7 +7,7 @@ function init(xf, yf, left, right, upper, lower)
     yc = cumsum(Δy) .- 0.5Δy
     δx = diff([first(xf); xc; last(xf)])
     δy = diff([first(yf); yc; last(yf)])
-    @assert minimum(Δx) ≈ maximum(Δx) ≈
+    @assert minimum(Δx) ≈ maximum(Δx) &&
             minimum(Δy) ≈ maximum(Δy) "Currently only uniform cells are supported :("
 
     h  = first(Δx)
@@ -50,64 +50,70 @@ function polar!(ps::LinearSolver{2, T}, rc) where {T}
     left, right, upper, lower = ps.bcs
     dof = ps.dof
     nt,nr = ps.n
+    Δθ,Δr = ps.Δ
     A  = ps.A
     b  = ps.b
-    Δr = ps.h
-
+    
     stencil = Stencil()
     fwd = Val(:+)
     rev = Val(:-)
 
     @inbounds for i = 2:nt-1, j = 1:nr
+        α = Δr[j] / Δθ[i] / rc[j]^2
         n = dof[i-1,j]
         m = dof[i+1,j]
         o = dof[i,  j]
-        polar!(A, stencil, fwd, 1.0/rc[j]^2, o, n)
-        polar!(A, stencil, fwd, 1.0/rc[j]^2, o, m)
+        polar!(A, stencil, fwd, α, o, n)
+        polar!(A, stencil, fwd, α, o, m)
     end
 
     @inbounds for i = 1, j = 1:nr
+        α = Δr[j] / Δθ[i] / rc[j]^2
         n = dof[nt, j]
         m = dof[i+1,j]
         o = dof[i,  j]
-        polar!(A, left,    fwd, 1.0/rc[j]^2, o, m, n)
-        polar!(b, left,    fwd, 1.0/rc[j]^2, o)
-        polar!(A, stencil, fwd, 1.0/rc[j]^2, o, m)
+        polar!(A, left,    fwd, α, o, m, n)
+        polar!(b, left,    fwd, α, o)
+        polar!(A, stencil, fwd, α, o, m)
     end
 
     @inbounds for i = nt, j = 1:nr
+        α = Δr[j] / Δθ[i] / rc[j]^2
         n = dof[i-1,j]
         m = dof[1,  j]
         o = dof[i,  j]
-        polar!(A, stencil, fwd, 1.0/rc[j]^2, o, n)
-        polar!(A, right,   fwd, 1.0/rc[j]^2, o, n, m)
-        polar!(b, right,   fwd, 1.0/rc[j]^2, o)
+        polar!(A, stencil, fwd, α, o, n)
+        polar!(A, right,   fwd, α, o, n, m)
+        polar!(b, right,   fwd, α, o)
     end
 
     @inbounds for i = 1:nt, j = 2:nr-1
+        α = Δθ[i] / Δr[j]
         n = dof[i,j-1]
         m = dof[i,j+1]
         o = dof[i,j]
-        cartesian!(A, stencil, fwd, o, n)
-        cartesian!(A, stencil, fwd, o, m)
+        cartesian!(A, stencil, fwd, α, o, n)
+        cartesian!(A, stencil, fwd, α, o, m)
     end
 
     @inbounds for i = 1:nt, j = 1
+        α = Δθ[i] / Δr[j]
         n = dof[i, nr]
         m = dof[i,j+1]
         o = dof[i,j]
-        cartesian!(A, lower,   fwd, o, m, n)
-        cartesian!(b, lower,   fwd, o)
-        cartesian!(A, stencil, fwd, o, m)
+        cartesian!(A, lower,   fwd, α, o, m, n)
+        cartesian!(b, lower,   fwd, α, o)
+        cartesian!(A, stencil, fwd, α, o, m)
     end
 
     @inbounds for i = 1:nt, j = nr
+        α = Δθ[i] / Δr[j]
         n = dof[i,j-1]
         m = dof[i,1]
         o = dof[i,j]
-        cartesian!(A, stencil, fwd, o, n)
-        cartesian!(A, upper,   fwd, o, n, m)
-        cartesian!(b, upper,   fwd, o)
+        cartesian!(A, stencil, fwd, α, o, n)
+        cartesian!(A, upper,   fwd, α, o, n, m)
+        cartesian!(b, upper,   fwd, α, o)
     end
 end
 
@@ -115,6 +121,7 @@ function cartesian!(ps::LinearSolver{2, T}) where {T}
     left, right, upper, lower = ps.bcs
     dof = ps.dof
     nx,ny = ps.n
+    Δx,Δy = ps.Δ
     A  = ps.A
     b  = ps.b
 
@@ -123,55 +130,61 @@ function cartesian!(ps::LinearSolver{2, T}) where {T}
     rev = Val(:-)
 
     @inbounds for i = 2:nx-1, j = 1:ny
+        α = Δy[j] / Δx[i]
         n = dof[i-1,j]
         m = dof[i+1,j]
         o = dof[i,  j]
-        cartesian!(A, stencil, fwd, o, n)
-        cartesian!(A, stencil, fwd, o, m)
+        cartesian!(A, stencil, fwd, α, o, n)
+        cartesian!(A, stencil, fwd, α, o, m)
     end
 
     @inbounds for i = 1, j = 1:ny
+        α = Δy[j] / Δx[i]
         n = dof[nx, j]
         m = dof[i+1,j]
         o = dof[i,  j]
-        cartesian!(A, left,    fwd, o, m, n)
-        cartesian!(b, left,    fwd, o)
-        cartesian!(A, stencil, fwd, o, m)
+        cartesian!(A, left,    fwd, α, o, m, n)
+        cartesian!(b, left,    fwd, α, o)
+        cartesian!(A, stencil, fwd, α, o, m)
     end
 
     @inbounds for i = nx, j = 1:ny
+        α = Δy[j] / Δx[i]
         n = dof[i-1,j]
         m = dof[1,  j]
         o = dof[i,  j]
-        cartesian!(A, stencil, fwd, o, n)
-        cartesian!(A, right,   fwd, o, n, m)
-        cartesian!(b, right,   fwd, o)
+        cartesian!(A, stencil, fwd, α, o, n)
+        cartesian!(A, right,   fwd, α, o, n, m)
+        cartesian!(b, right,   fwd, α, o)
     end
 
     @inbounds for i = 1:nx, j = 2:ny-1
+        α = Δx[i] / Δy[j]
         n = dof[i,j-1]
         m = dof[i,j+1]
         o = dof[i,j]
-        cartesian!(A, stencil, fwd, o, n)
-        cartesian!(A, stencil, fwd, o, m)
+        cartesian!(A, stencil, fwd, α, o, n)
+        cartesian!(A, stencil, fwd, α, o, m)
     end
 
     @inbounds for i = 1:nx, j = 1
+        α = Δx[i] / Δy[j]
         n = dof[i, ny]
         m = dof[i,j+1]
         o = dof[i,j]
-        cartesian!(A, lower,   fwd, o, m, n)
-        cartesian!(b, lower,   fwd, o)
-        cartesian!(A, stencil, fwd, o, m)
+        cartesian!(A, lower,   fwd, α, o, m, n)
+        cartesian!(b, lower,   fwd, α, o)
+        cartesian!(A, stencil, fwd, α, o, m)
     end
 
     @inbounds for i = 1:nx, j = ny
+        α = Δx[i] / Δy[j]
         n = dof[i,j-1]
         m = dof[i,1]
         o = dof[i,j]
-        cartesian!(A, stencil, fwd, o, n)
-        cartesian!(A, upper,   fwd, o, n, m)
-        cartesian!(b, upper,   fwd, o)
+        cartesian!(A, stencil, fwd, α, o, n)
+        cartesian!(A, upper,   fwd, α, o, n, m)
+        cartesian!(b, upper,   fwd, α, o)
     end
 end
 
@@ -179,7 +192,7 @@ function radial!(ps::LinearSolver{2, T}, rc) where {T}
     left, right, upper, lower = ps.bcs
     dof = ps.dof
     nz,nr = ps.n
-    Δr = ps.h
+    Δz,Δr = ps.Δ
     A  = ps.A
     b  = ps.b
 
@@ -188,30 +201,32 @@ function radial!(ps::LinearSolver{2, T}, rc) where {T}
     rev = Val(:-)
 
     @inbounds for i = 1:nz, j = 2:nr-1
+        α = Δz[i] / 2.0rc[j]
         n = dof[i,j-1]
         m = dof[i,j+1]
         o = dof[i,j]
-        radial!(A, stencil, rev, Δr/2rc[j],   o, n)
-        radial!(A, stencil, fwd, Δr/2rc[j], o, m)
+        radial!(A, stencil, rev, α, o, n)
+        radial!(A, stencil, fwd, α, o, m)
     end
-
 if first(rc) > Δr/2
     @inbounds for i = 1:nz, j = 1
+        α = Δz[i] / 2.0rc[j]
         n = dof[i,nr]
         m = dof[i,j+1]
         o = dof[i,j]
-        radial!(A, lower,   rev, Δr/2rc[j], o, m, n)
-        radial!(b, lower,   rev, Δr/2rc[j], o)
-        radial!(A, stencil, fwd, Δr/2rc[j], o, m)
+        radial!(A, lower,   rev, α, o, m, n)
+        radial!(b, lower,   rev, α, o)
+        radial!(A, stencil, fwd, α, o, m)
     end
 end
     @inbounds for i = 1:nz, j = nr
+        α = Δz[i] / 2.0rc[j]
         n = dof[i,j-1]
         m = dof[i,1]
         o = dof[i,j]
-        radial!(A, stencil, rev, Δr/2rc[j], o, n)
-        radial!(A, upper,   fwd, Δr/2rc[j], o, n, m)
-        radial!(b, upper,   fwd, Δr/2rc[j], o)
+        radial!(A, stencil, rev, α, o, n)
+        radial!(A, upper,   fwd, α, o, n, m)
+        radial!(b, upper,   fwd, α, o)
     end
     return nothing
 end
