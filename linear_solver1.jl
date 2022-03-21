@@ -5,13 +5,12 @@ function init(xf, left, right)
     δx = diff([first(xf); xc; last(xf)])
     @assert minimum(Δx) ≈ maximum(Δx) "Currently only uniform cells are supported :("
 
-    h  = first(Δx)   
     N  = nx
     A  = spzeros(N, N)
     b  = zeros(N)
     dof = collect(reshape(1:N, nx, 1))
 
-    return LinearSolver((nx,), (Δx,), (δx,), h, A, b, similar(b), similar(b), dof, (left, right))
+    return LinearSolver((nx,), (Δx,), (δx,), first(Δx)^2, A, b, similar(b), similar(b), dof, (left, right))
 end
 
 function LinearSolver(xf; left=DirichletBC(), right=DirichletBC())
@@ -93,7 +92,7 @@ function cylindrical!(ps::LinearSolver{1, T}, rf) where {T}
         radial!(A, stencil, rev, α, o, n)
         radial!(A, stencil, fwd, α, o, m)
     end
-if first(rc) > Δr/2
+    
     @inbounds for i = 1
         α = 0.5rc[i]
         n = dof[nr]
@@ -103,7 +102,7 @@ if first(rc) > Δr/2
         radial!(b, left,    rev, α, o)
         radial!(A, stencil, fwd, α, o, m)
     end
-end
+    
     @inbounds for i = nr
         α = 0.5rc[i]
         n = dof[i-1]

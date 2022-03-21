@@ -10,12 +10,11 @@ function init(xf, yf, left, right, upper, lower)
     @assert minimum(Δx) ≈ maximum(Δx) &&
             minimum(Δy) ≈ maximum(Δy) "Currently only uniform cells are supported :("
 
-    h  = first(Δx)
     N  = nx * ny
     A  = spzeros(N, N)
     b  = zeros(N)
     dof = collect(reshape(1:N, nx, ny))
-    return LinearSolver((nx,ny), (Δx,Δy), (δx,δy), h, A, b, similar(b), similar(b), dof, (left, right, upper, lower))
+    return LinearSolver((nx,ny), (Δx,Δy), (δx,δy), first(Δx) * first(Δy), A, b, similar(b), similar(b), dof, (left, right, upper, lower))
 end
 
 function LinearSolver(xf, yf; left=DirichletBC(), right=DirichletBC(), upper=DirichletBC(), lower=DirichletBC())
@@ -208,7 +207,7 @@ function radial!(ps::LinearSolver{2, T}, rc) where {T}
         radial!(A, stencil, rev, α, o, n)
         radial!(A, stencil, fwd, α, o, m)
     end
-if first(rc) > Δr/2
+
     @inbounds for i = 1:nz, j = 1
         α = Δz[i] / 2.0rc[j]
         n = dof[i,nr]
@@ -218,7 +217,7 @@ if first(rc) > Δr/2
         radial!(b, lower,   rev, α, o)
         radial!(A, stencil, fwd, α, o, m)
     end
-end
+    
     @inbounds for i = 1:nz, j = nr
         α = Δz[i] / 2.0rc[j]
         n = dof[i,j-1]

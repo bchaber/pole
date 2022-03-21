@@ -4,7 +4,7 @@ struct LinearSolver{D, T <: Tuple}
     Δ :: NTuple{D, Vector{Float64}}
     δ :: NTuple{D, Vector{Float64}}
 
-    h :: Float64
+    ΔV :: Float64
     
     A :: SparseMatrixCSC{Float64, Int64}
     b :: Vector{Float64}
@@ -19,7 +19,7 @@ const Reverse = Val{:-}
 
 function solve!(ps::LinearSolver{D, T}, ρ) where {D, T}
     @inbounds for i in eachindex(ρ)
-      ps.rhs[i] = ps.b[i] - ρ[i] * ps.h^2 # assume uniform mesh in all directions
+      ps.rhs[i] = ps.b[i] - ρ[i] * ps.ΔV # assume uniform mesh
     end
     ps.u .= (ps.A \ ps.rhs)
     return nothing
