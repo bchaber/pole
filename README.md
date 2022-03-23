@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://github.com/bchaber/pole/blob/main/pole.svg" width="256px" alt="An electric potential field from three point charges"/>
+  <img src="https://github.com/bchaber/pole/blob/main/logo.svg" width="256px" alt="A6 Magnetron with spokes"/>
   <h1>pole <a href="https://zenodo.org/badge/latestdoi/403159619"><img src="https://zenodo.org/badge/403159619.svg" alt="DOI"></a></h1>
 </p>
 
